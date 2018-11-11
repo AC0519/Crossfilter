@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="EN">
+<head>
+  <meta charset="utf-8">
+  <title> Crossfilter example</title>
+</head>
+
+<body>
+  <script type="text/javascript" src="crossfilter.js"></script>
+
+  <script type="text/javascript">
+
+  function print_filter(filter) {
+    var f=eval(filter);
+    if (typeof(f.length) != "undefined") {}else{}
+    if (typeof(f.top) != "undefined") {f=f.top(Infinity);}else{}
+    if (typeof(f.dimension) != "undefined") {f=f.dimension(function(d) { return "";}).top(Infinity);}else{}
+    console.log(filter+"("+f.length+") = "+JSON.stringify(f).replace("[","[\n\t").replace(/}\,/g,"},\n\t").replace("]","\n]"));
+  }
+
+  var data = [
+    {date: "2011-11-14T16:17:54Z", quantity: 2, total: 190, tip: 100, type: "tab"},
+    {date: "2011-11-14T16:20:19Z", quantity: 2, total: 190, tip: 100, type: "tab"},
+    {date: "2011-11-14T16:28:54Z", quantity: 1, total: 300, tip: 200, type: "visa"},
+    {date: "2011-11-14T16:30:43Z", quantity: 2, total: 90, tip: 0, type: "tab"},
+    {date: "2011-11-14T16:48:46Z", quantity: 2, total: 90, tip: 0, type: "tab"},
+    {date: "2011-11-14T16:53:41Z", quantity: 2, total: 90, tip: 0, type: "tab"},
+    {date: "2011-11-14T16:54:06Z", quantity: 1, total: 100, tip: 0, type: "cash"},
+    {date: "2011-11-14T16:58:03Z", quantity: 2, total: 90, tip: 0, type: "tab"},
+    {date: "2011-11-14T17:07:21Z", quantity: 2, total: 90, tip: 0, type: "tab"},
+    {date: "2011-11-14T17:22:59Z", quantity: 2, total: 90, tip: 0, type: "tab"},
+    {date: "2011-11-14T17:25:45Z", quantity: 2, total: 200, tip: 0, type: "cash"},
+    {date: "2011-11-14T17:29:52Z", quantity: 1, total: 200, tip: 100, type: "visa"}
+  ];
+
+    data.forEach(function(d){
+      var tempDate = new Date(d.date);
+      d.date = tempDate;
+
+    });
+
+    var facts = crossfilter(data);
+
+    //add new type
+    var newData = [{date: "2011-11-14T17:39:52Z", quantity: 1, total: 200, tip: 100, type: "turnip"}];
+    //facts.add(newData);
+
+
+    var typeDimension = facts.dimension(function(d){ return d.type; });
+    var tipDimension = facts.dimension(function(d){ return d.tip; });
+    var scatterDimension = facts.dimension(function(d){ return [d.total,d.tip]; });
+    var dateDimension = facts.dimension(function(d){ return d.date; });
+
+    //typeDimension.dispose();
+
+    //Group by type
+    var typeGroup = typeDimension.group();
+
+    //Group by first letter of type; (0,1) is saying take the first character and go on for a length of one
+    //var typeGroup = typeDimension.group(function(d) {return d.substring(0,1); });
+
+
+    //Therse two will print out the same result
+    console.log(typeGroup.all());
+    print_filter('typeGroup');
+
+    //This will returb tab because the data has been ordered by value
+    console.log(typeGroup.top(1));
+
+    //Tells how many variables are in your group
+    console.log(typeGroup.size());
+
+    //-------------------------------------------------------------
+
+    //var dateGroup = dateDimension.group();
+
+
+    //To bundle time data by hour you need to adjust the dateGroup and add the function: function(d){return d.getHours}
+    //var dateGroup = dateDimension.group(function(d){ return d.getUTCHours(); });
+
+    //console.log(dateGroup.size());
+    //print_filter('dateGroup');
+
+
+    //GroupAll -------------------------------------------------------
+
+    //This observes all filters
+    console.log(facts.groupAll().reduceSum(function(d){ return d.total;}).value());
+
+    //This ignores filters applied to this dimension
+    console.log(typeDimension.groupAll().reduceSum(function(d){ return d.total;}).value());
+
+
+    //reduceSum allows you to do a lot more than summing. You can average or perform other calculations,
+    //anything that requires you to access values from your data, rather than a row count.  It always takes a function
+    console.log(facts.groupAll().reduceSum(function(d){return d.total;}).value());
+
+    //sum by one field but group by another
+    //Here we are going to see total spent by type of payment 'our type group' and a function calling for total
+    //Good rule of thumb is the dimension is the x axis and the group becomes the y axis
+    print_filter('typeGroup.reduceSum(function(d){ return d.total; })');
+
+    //This is how you can generate the data for amount by time
+    var dateGroup = dateDimension.group();
+    print_filter('dateGroup.reduceSum(function(d){ return d.total; })');
+
+
+    /*
+    Reduce is the parent function of reduceSum and reduceCount.  To use reduce you need to create three JS functions.
+    One decides when a row should be added, one that decides when to remove it, and on that decides the initial value.
+    i = Initial
+    d= data point
+    */
+
+    function reduceAdd(i, d){ return d.tip > 0 ? i+1 : i;};
+    function reduceRemove(i, d){ return d.tip > 0 ? i-1 : i;};
+    function reduceInitial(){ return 0;};
+
+    print_filter('typeGroup.reduceCount()');
+    print_filter('typeGroup.reduce(reduceAdd, reduceRemove, reduceInitial)');
+
+
+
+
+
+
+
+
+    </script>
+
+
+
+
+
+  </body>
+  </html>
